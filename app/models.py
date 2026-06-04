@@ -5,7 +5,7 @@ from .database import Base
 class Event(Base):
     __tablename__ = "events"
 
-    id = Column(Integer, primary key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     event_id = Column(String(36), unique=True, nullable=False, index=True)
     store_id = Column(String(20), nullable=False, index=True)
     camera_id = Column(String(20))
@@ -22,7 +22,7 @@ class Event(Base):
 class Session(Base):
     __tablename__ = "sessions"
 
-    id = Column(Integer, primary key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     session_id = Column(String(36), unique=True, nullable=False)
     store_id = Column(String(20), nullable=False, index=True)
     visitor_id = Column(String(50), nullable=False)
@@ -39,7 +39,7 @@ class Session(Base):
 class Transaction(Base):
     __tablename__ = "transactions"
 
-    id = Column(Integer, primary key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     transaction_id = Column(String(36), unique=True, nullable=False)
     store_id = Column(String(20), nullable=False, index=True)
     order_id = Column(String(20))
@@ -53,7 +53,7 @@ class Transaction(Base):
 class Store(Base):
     __tablename__ = "stores"
 
-    id = Column(Integer, primary key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     store_id = Column(String(20), unique=True, nullable=False)
     name = Column(String(100))
     zones = Column(JSON, default=list)
@@ -63,7 +63,7 @@ class Store(Base):
 class Anomaly(Base):
     __tablename__ = "anomalies"
 
-    id = Column(Integer, primary key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     anomaly_id = Column(String(36), unique=True, nullable=False)
     store_id = Column(String(20), nullable=False, index=True)
     anomaly_type = Column(String(30), nullable=False)

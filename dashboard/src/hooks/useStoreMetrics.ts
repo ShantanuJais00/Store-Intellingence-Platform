@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Metrics, FunnelData, HeatmapData, AnomalyData } from '../types';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = 'http://localhost:8000/api/v1';
 
 export const useStoreMetrics = (storeId: string) => {
   const [metrics, setMetrics] = useState<Metrics | null>(null);

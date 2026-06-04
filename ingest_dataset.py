@@ -32,10 +32,10 @@ async def ingest_events(file_path):
             event = {
                 "event_id": str(uuid.uuid4()),
                 "store_id": data.get("store_code") or data.get("store_id", "UNKNOWN"),
-                "camera_id": data.get("camera_id"),
+                "camera_id": str(data.get("camera_id"))[:20] if data.get("camera_id") else None,
                 "visitor_id": data.get("id_token") or f"TRK_{data.get('track_id')}",
                 "event_type": api_event_type,
-                "timestamp": data.get("event_timestamp") or data.get("event_time"),
+                "timestamp": data.get("event_timestamp") or data.get("event_time") or datetime.utcnow().isoformat(),
                 "zone_id": data.get("zone_id"),
                 "is_staff": data.get("is_staff", False),
                 "metadata": {
@@ -53,7 +53,7 @@ async def ingest_events(file_path):
         for i in range(0, len(events_payload), 500):
             chunk = events_payload[i:i+500]
             try:
-                response = await client.post(f"{API_URL}/events/ingest", json={"events": chunk})
+                response = await client.post(f"{API_URL}/api/v1/events/batch", json={"events": chunk})
                 if response.status_code == 200:
                     print(f"[SUCCESS] Ingested {len(chunk)} events successfully.")
                 else:
@@ -88,7 +88,7 @@ async def ingest_transactions(file_path):
     
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post(f"{API_URL}/transactions/ingest", json=transactions_payload)
+            response = await client.post(f"{API_URL}/api/v1/transactions/ingest", json=transactions_payload)
             if response.status_code == 200:
                 print(f"[SUCCESS] Ingested {len(transactions_payload)} transactions successfully.")
             else:
