@@ -311,6 +311,12 @@ store-intelligence/
 | `REID_THRESHOLD` | Similarity threshold for cross-camera person matching | `0.7` |
 | `LOG_LEVEL` | Application logging level | `INFO` |
 
+## Dashboard
+
+<img width="1361" height="612" alt="image" src="https://github.com/user-attachments/assets/404c33e1-f489-44ea-bb3b-bb7bd6a3a8ae" />
+
+<img width="1353" height="670" alt="image" src="https://github.com/user-attachments/assets/8eabe3d4-f518-43ca-8887-0ea5740048bf" />
+
 ## License
 
 MIT License
