@@ -47,6 +47,8 @@ async def ingest_events(request: IngestRequest, db: AsyncSession = Depends(get_d
             errors.append({"event_id": event_data.event_id, "error": str(e)})
 
     if new_events:
+        from ..services.session_service import build_sessions
+        await build_sessions(new_events, db)
         await db.commit()
         from ..main import ws_manager
         await ws_manager.broadcast_events(new_events)

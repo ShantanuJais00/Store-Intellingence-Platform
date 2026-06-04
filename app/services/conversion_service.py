@@ -15,9 +15,7 @@ async def correlate_pos(store_id: str, db: AsyncSession):
         
         event_query = select(Event.visitor_id).where(
             Event.store_id == store_id,
-            Event.event_type == "BILLING_QUEUE_JOIN",
-            Event.timestamp >= time_limit,
-            Event.timestamp <= tx.timestamp
+            Event.zone_id.like("%BILLING%")
         ).order_by(Event.timestamp.desc()).limit(1)
 
         ev_result = await db.execute(event_query)

@@ -39,7 +39,7 @@ async def compute_metrics(store_id: str, date_from: Optional[datetime], date_to:
     dwell_res = await db.execute(dwell_query)
     avg_dwell_per_zone = {str(row[0]): float(row[1] or 0) for row in dwell_res.all()}
 
-    join_q = select(func.count(Event.id)).where(Event.store_id == store_id, Event.event_type == "BILLING_QUEUE_JOIN")
+    join_q = select(func.count(Event.id)).where(Event.store_id == store_id, Event.zone_id.like("%BILLING%"))
     abandon_q = select(func.count(Event.id)).where(Event.store_id == store_id, Event.event_type == "BILLING_QUEUE_ABANDON")
     purchase_q = select(func.count(Event.id)).where(Event.store_id == store_id, Event.event_type == "PURCHASE")
     
@@ -69,7 +69,7 @@ async def compute_funnel(store_id: str, date_from: Optional[datetime], date_to: 
     if date_to: q_zone = q_zone.where(Event.timestamp <= date_to)
     zone_count = (await db.execute(q_zone)).scalar() or 0
 
-    q_billing = select(func.count(func.distinct(Event.visitor_id))).where(Event.store_id == store_id, Event.event_type == "BILLING_QUEUE_JOIN")
+    q_billing = select(func.count(func.distinct(Event.visitor_id))).where(Event.store_id == store_id, Event.zone_id.like("%BILLING%"))
     if date_from: q_billing = q_billing.where(Event.timestamp >= date_from)
     if date_to: q_billing = q_billing.where(Event.timestamp <= date_to)
     billing_count = (await db.execute(q_billing)).scalar() or 0

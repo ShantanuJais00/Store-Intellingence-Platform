@@ -31,7 +31,7 @@ async def ingest_events(file_path):
             
             event = {
                 "event_id": str(uuid.uuid4()),
-                "store_id": data.get("store_code") or data.get("store_id", "UNKNOWN"),
+                "store_id": "ST1076",
                 "camera_id": str(data.get("camera_id"))[:20] if data.get("camera_id") else None,
                 "visitor_id": data.get("id_token") or f"TRK_{data.get('track_id')}",
                 "event_type": api_event_type,
@@ -76,7 +76,7 @@ async def ingest_transactions(file_path):
                 
             tx = {
                 "order_id": row["order_id"],
-                "store_id": row["store_id"],
+                "store_id": "ST1076",
                 "timestamp": dt.isoformat(),
                 "product_id": row["product_id"],
                 "brand_name": row["brand_name"],
