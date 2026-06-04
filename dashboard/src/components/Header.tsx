@@ -37,6 +37,8 @@ const Header: React.FC<HeaderProps> = ({ storeId, setStoreId, isConnected }) => 
             onChange={(e) => setStoreId(e.target.value)}
             className="bg-brand-background/50 border border-white/10 rounded-lg px-4 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-primary/50 text-brand-text appearance-none cursor-pointer"
           >
+            <option value="ST1076">Store ST1076 - Main</option>
+            <option value="store_1076">Store 1076 - Secondary</option>
             <option value="STORE_001">Store 001 - Downtown</option>
             <option value="STORE_002">Store 002 - Uptown</option>
           </select>

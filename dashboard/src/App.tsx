@@ -10,7 +10,7 @@ import { useStoreMetrics } from './hooks/useStoreMetrics';
 import { Loader2, AlertCircle } from 'lucide-react';
 
 function App() {
-  const [storeId, setStoreId] = useState('STORE_001');
+  const [storeId, setStoreId] = useState('ST1076');
   const { isConnected, events } = useWebSocket('ws://localhost:8000/ws');
   const { metrics, funnel, heatmap, anomalies, loading, error } = useStoreMetrics(storeId);
 
