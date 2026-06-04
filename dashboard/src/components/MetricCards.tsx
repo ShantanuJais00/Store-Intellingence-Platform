@@ -10,7 +10,7 @@ interface MetricCardsProps {
 const MetricCards: React.FC<MetricCardsProps> = ({ metrics, anomalyCount }) => {
   if (!metrics) return null;
 
-  const convRate = metrics.conversion_rate || 0;
+  const convRate = (metrics.conversion_rate || 0) * 100;
   const convColor = convRate > 20 ? 'text-brand-success' : convRate >= 10 ? 'text-brand-warning' : 'text-brand-danger';
   const queueDepth = metrics.queue_depth || 0;
 
