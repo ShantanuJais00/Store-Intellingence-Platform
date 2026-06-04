@@ -55,6 +55,11 @@ async def ingest_events(request: IngestRequest, db: AsyncSession = Depends(get_d
 
     return IngestResponse(accepted=accepted, rejected=rejected, errors=errors)
 
+@router.post("/events/ingest", response_model=IngestResponse, status_code=201)
+async def ingest_events_alias(request: IngestRequest, db: AsyncSession = Depends(get_db)):
+    """Alias for /events/batch to match challenge spec."""
+    return await ingest_events(request, db)
+
 @router.post("/transactions/ingest", response_model=dict)
 async def ingest_transactions(transactions: list[TransactionCreate], db: AsyncSession = Depends(get_db)):
     store_ids = set()
