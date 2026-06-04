@@ -10,7 +10,8 @@ __pycache__/
 env/
 venv/
 .venv/
-data/
+data/*
+!data/events.jsonl
 *.sqlite3
 *.db
 .pytest_cache/

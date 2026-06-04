@@ -11,7 +11,7 @@ async def test_funnel_empty_store(async_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_funnel_full_journey(async_client: AsyncClient, sample_events, sample_transactions):
-    await async_client.post("/api/v1/events/batch", json=sample_events)
+    await async_client.post("/api/v1/events/batch", json={"events": sample_events})
     await async_client.post("/api/v1/transactions/ingest", json=sample_transactions)
     
     response = await async_client.get("/api/v1/stores/store_1/funnel")
@@ -22,7 +22,7 @@ async def test_funnel_full_journey(async_client: AsyncClient, sample_events, sam
 
 @pytest.mark.asyncio
 async def test_funnel_dropoff_percentages(async_client: AsyncClient, sample_events):
-    await async_client.post("/api/v1/events/batch", json=sample_events)
+    await async_client.post("/api/v1/events/batch", json={"events": sample_events})
     
     response = await async_client.get("/api/v1/stores/store_1/funnel")
     assert response.status_code == 200
@@ -33,7 +33,7 @@ async def test_funnel_dropoff_percentages(async_client: AsyncClient, sample_even
 
 @pytest.mark.asyncio
 async def test_funnel_no_purchases(async_client: AsyncClient, sample_events):
-    await async_client.post("/api/v1/events/batch", json=sample_events)
+    await async_client.post("/api/v1/events/batch", json={"events": sample_events})
     
     response = await async_client.get("/api/v1/stores/store_1/funnel")
     assert response.status_code == 200

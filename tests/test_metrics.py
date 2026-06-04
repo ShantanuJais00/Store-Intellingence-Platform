@@ -16,7 +16,7 @@ async def test_metrics_all_staff_excluded(async_client: AsyncClient, sample_even
     for e in staff_events:
         e["is_staff"] = True
     
-    await async_client.post("/api/v1/events/batch", json=staff_events)
+    await async_client.post("/api/v1/events/batch", json={"events": staff_events})
     
     response = await async_client.get("/api/v1/stores/store_1/metrics")
     assert response.status_code == 200
@@ -25,7 +25,7 @@ async def test_metrics_all_staff_excluded(async_client: AsyncClient, sample_even
 
 @pytest.mark.asyncio
 async def test_metrics_with_visitors(async_client: AsyncClient, sample_events):
-    await async_client.post("/api/v1/events/batch", json=sample_events)
+    await async_client.post("/api/v1/events/batch", json={"events": sample_events})
     
     response = await async_client.get("/api/v1/stores/store_1/metrics")
     assert response.status_code == 200
@@ -34,14 +34,25 @@ async def test_metrics_with_visitors(async_client: AsyncClient, sample_events):
 
 @pytest.mark.asyncio
 async def test_metrics_conversion_rate(async_client: AsyncClient, sample_events, sample_transactions):
-    await async_client.post("/api/v1/events/batch", json=sample_events)
+    # Add a BILLING_QUEUE_JOIN event to enable POS correlation
+    billing_event = {
+        "event_id": "evt_billing_1",
+        "timestamp": "2023-10-27T10:12:00Z",
+        "event_type": "BILLING_QUEUE_JOIN",
+        "store_id": "store_1",
+        "camera_id": "cam_pos",
+        "visitor_id": "p_001",
+        "zone_id": "checkout"
+    }
+    await async_client.post("/api/v1/events/batch", json={"events": sample_events + [billing_event]})
     await async_client.post("/api/v1/transactions/ingest", json=sample_transactions)
+    # Build sessions so conversion rate can be computed
+    await async_client.post("/api/v1/stores/store_1/sessions/build?date=2023-10-27")
     
     response = await async_client.get("/api/v1/stores/store_1/metrics")
     assert response.status_code == 200
     data = response.json()
-    # If the logic triggers, conversion rate should be > 0
-    # Wait, if tx timestamp and event timestamp match, it should be 1.0
+    # Conversion rate should be > 0 since we have a billing event matching the transaction
     assert data["conversion_rate"] > 0.0
 
 @pytest.mark.asyncio
@@ -57,7 +68,7 @@ async def test_metrics_avg_dwell_per_zone(async_client: AsyncClient, sample_even
         "zone_id": "shoes",
         "dwell_ms": 300000
     }
-    await async_client.post("/api/v1/events/batch", json=sample_events + [dwell_event])
+    await async_client.post("/api/v1/events/batch", json={"events": sample_events + [dwell_event]})
     
     response = await async_client.get("/api/v1/stores/store_1/metrics")
     assert response.status_code == 200

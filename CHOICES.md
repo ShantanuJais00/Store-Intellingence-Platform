@@ -41,3 +41,49 @@ The backend API is designed to ingest high-velocity data streams from edge devic
 
 **Rationale**: 
 Re-Identification (ReID) is required to understand that a person leaving Camera A's view is the same person entering Camera B's view. This is traditionally done by cropping the person's bounding box and generating a mathematical feature vector (embedding). TransReID (transformer-based) offers state-of-the-art accuracy but is entirely unsuited for real-time edge processing due to its massive parameter count. ResNet50-IBN is a solid baseline but is still quite heavy. OSNet (Omni-Scale Network) was chosen because its architecture is explicitly designed to learn features across multiple spatial scales (from global clothing color down to local features like a logo on a shirt) while remaining incredibly lightweight. The `osnet_x1_0` model runs inferences in milliseconds, allowing us to maintain high system throughput while achieving excellent Rank-1 accuracy on standard datasets like Market-1501.
+
+---
+
+### 6. Schema Design
+**AI Suggestion**: Normalise heterogeneous input formats into a single canonical Event table with JSONB metadata  
+**Final Decision**: Single `events` table with 9 typed columns + 1 JSONB column
+
+**Rationale**:  
+The challenge data arrives in three distinct formats: entry/exit events (keyed by `id_token`), zone events (keyed by `track_id`), and queue events (keyed by `queue_event_id`). Designing separate tables per event type would have created a fragmented schema requiring expensive JOINs for funnel and session queries. Instead, we normalise all events into a single canonical `Event` table with a strict `event_type` enum (`ENTRY`, `EXIT`, `REENTRY`, `ZONE_ENTER`, `ZONE_EXIT`, `ZONE_DWELL`, `BILLING_QUEUE_JOIN`, `BILLING_QUEUE_ABANDON`, `PURCHASE`).
+
+Key schema decisions:
+- **UUID `event_id`**: Enables idempotent batch ingestion — the API pre-checks `SELECT event_id WHERE event_id IN (...)` and silently skips duplicates, making retries safe from the edge pipeline.
+- **JSONB `metadata_json`**: Preserves format-specific fields (e.g., `gender_pred`, `queue_position_at_join`, `zone_hotspot_x`) without polluting the core schema. This NoSQL-like flexibility prevents schema migrations when upstream data adds new fields.
+- **Composite indexing**: `(store_id, timestamp)` B-Tree index enables sub-millisecond time-windowed aggregation queries for metrics, funnel, and heatmap endpoints.
+- **`is_staff` boolean**: First-class column (not buried in metadata) so that staff exclusion can be applied directly in SQL `WHERE` clauses rather than requiring post-query filtering.
+- **Session correlation**: A separate `sessions` table materialises visitor journeys from raw events, with `zones_visited` as JSONB array and `converted` boolean for purchase attribution. The `transaction_id` foreign reference links to POS data.
+
+**Alternatives considered**:
+- *Event sourcing with Kafka*: Too heavyweight for the initial scale (dozens of stores). PostgreSQL handles the write throughput and we avoid operational complexity.
+- *Separate tables per event type*: Would require 4+ tables and complex UNION queries for funnel computation. The single-table approach with type discrimination is simpler and faster.
+
+---
+
+### 7. API Architecture
+**Options Considered**: REST, GraphQL, gRPC  
+**AI Suggestion**: REST with async FastAPI for simplicity and auto-generated documentation  
+**Final Decision**: Versioned REST API (`/api/v1/`) with WebSocket for real-time events
+
+**Rationale**:  
+The API serves two fundamentally different clients: (a) the edge CV pipeline pushing high-velocity event batches, and (b) the React dashboard pulling aggregated analytics. REST was chosen over GraphQL because the query patterns are well-defined and fixed — there is no need for client-specified field selection. gRPC was considered for the edge-to-API ingestion path due to its binary efficiency, but the added complexity of protobuf schema management was not justified at our current scale.
+
+Key architectural decisions:
+
+- **Versioned prefix (`/api/v1/`)**: All endpoints live under a versioned namespace. This allows us to evolve the API (e.g., `/api/v2/` with breaking schema changes) without disrupting existing edge pipeline deployments.
+
+- **Batch ingestion with 500-event cap**: The `POST /api/v1/events/batch` endpoint accepts up to 500 events per request. This balances network efficiency (fewer HTTP round-trips from the edge) against memory safety (preventing a single massive payload from OOMing the API process). Pydantic's `max_length=500` on the `events` list field enforces this at the schema level.
+
+- **Async-first design**: Every database operation uses `async/await` with `asyncpg`. A single FastAPI worker can handle thousands of concurrent I/O-bound requests (waiting for PostgreSQL inserts or reads) without thread-pool exhaustion. This is critical when dozens of edge pipelines POST events simultaneously.
+
+- **WebSocket for real-time dashboard**: The dashboard connects via `WS /ws` to receive live event notifications. When new events are ingested, the `ConnectionManager.broadcast_events()` method pushes them to all connected clients. This avoids the dashboard needing to poll the REST API for updates.
+
+- **Dependency injection for testability**: The `get_db` dependency is overridden in tests with an `aiosqlite` in-memory session (`tests/conftest.py`). This enables full integration testing of all API routes without requiring a running PostgreSQL instance, dramatically reducing CI/CD pipeline complexity.
+
+- **Resource-oriented URL design**: Analytics endpoints follow the pattern `GET /api/v1/stores/{store_id}/metrics|funnel|heatmap|anomalies|sessions`. This makes the API self-documenting and aligns with REST conventions where the store is the primary resource.
+
+- **Structured error responses**: Ingestion returns `{"accepted": N, "rejected": M, "errors": [...]}` for partial-success scenarios, while infrastructure failures return `503 DATABASE_UNAVAILABLE` via the `LoggingMiddleware` circuit breaker.

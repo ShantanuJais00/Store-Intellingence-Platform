@@ -207,6 +207,6 @@ async def build_sessions(
         created += 1
 
     if created > 0:
-        await db.flush()
+        await db.commit()
 
     return {"sessions_created": created}

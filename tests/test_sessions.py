@@ -3,10 +3,10 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_session_creation(async_client: AsyncClient, sample_events):
-    await async_client.post("/api/v1/events/batch", json=sample_events)
-    await async_client.post("/api/v1/stores/store_1/sessions/build")
+    await async_client.post("/api/v1/events/batch", json={"events": sample_events})
+    await async_client.post("/api/v1/stores/store_1/sessions/build?date=2023-10-27")
     
-    response = await async_client.get("/api/v1/stores/store_1/sessions")
+    response = await async_client.get("/api/v1/stores/store_1/sessions?date=2023-10-27")
     assert response.status_code == 200
     data = response.json()
     sessions = data["sessions"]
@@ -41,7 +41,7 @@ async def test_reentry_detection(async_client: AsyncClient):
             "visitor_id": "p_002",
         }
     ]
-    await async_client.post("/api/v1/events/batch", json=events)
+    await async_client.post("/api/v1/events/batch", json={"events": events})
     await async_client.post("/api/v1/stores/store_1/sessions/build?date=2023-10-27")
     
     response = await async_client.get("/api/v1/stores/store_1/sessions?date=2023-10-27")
@@ -49,14 +49,15 @@ async def test_reentry_detection(async_client: AsyncClient):
     data = response.json()
     sessions = data["sessions"]
     assert len(sessions) >= 1
-    assert any(s.get("is_reentry") is True for s in sessions) or any(len(sessions) == 2 for s in sessions)
+    # The session should be marked as re-entry since REENTRY event exists
+    assert any(s.get("is_reentry") is True for s in sessions)
 
 @pytest.mark.asyncio
 async def test_no_purchases(async_client: AsyncClient, sample_events):
-    await async_client.post("/api/v1/events/batch", json=sample_events)
-    await async_client.post("/api/v1/stores/store_1/sessions/build")
+    await async_client.post("/api/v1/events/batch", json={"events": sample_events})
+    await async_client.post("/api/v1/stores/store_1/sessions/build?date=2023-10-27")
     
-    response = await async_client.get("/api/v1/stores/store_1/sessions")
+    response = await async_client.get("/api/v1/stores/store_1/sessions?date=2023-10-27")
     assert response.status_code == 200
     data = response.json()
     sessions = data["sessions"]
@@ -74,14 +75,14 @@ async def test_pos_correlation(async_client: AsyncClient, sample_events, sample_
         "visitor_id": "p_001",
         "zone_id": "checkout"
     }
-    await async_client.post("/api/v1/events/batch", json=sample_events + [billing_event])
+    await async_client.post("/api/v1/events/batch", json={"events": sample_events + [billing_event]})
     await async_client.post("/api/v1/transactions/ingest", json=sample_transactions)
-    await async_client.post("/api/v1/stores/store_1/sessions/build")
+    await async_client.post("/api/v1/stores/store_1/sessions/build?date=2023-10-27")
     
-    response = await async_client.get("/api/v1/stores/store_1/sessions")
+    response = await async_client.get("/api/v1/stores/store_1/sessions?date=2023-10-27")
     assert response.status_code == 200
     data = response.json()
     sessions = data["sessions"]
     assert len(sessions) > 0
-    # The session for p_001 should be correlated with tx_001 since their times align within 5 min
-    assert any(s.get("transaction_id") == "tx_001" or s.get("converted", True) for s in sessions)
+    # The session for p_001 should be correlated since billing event + transaction align within 5 min
+    assert any(s.get("converted") is True for s in sessions)
